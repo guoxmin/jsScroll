@@ -82,7 +82,10 @@
             this.startPos = {
                 // 获取初始touches坐标
                 x: touches.pageX,
-                y: touches.pageY
+                y: touches.pageY,
+
+                 // store time to determine touch duration
+                time: +new Date
 
             };
 
@@ -138,12 +141,15 @@
             }
         },
         touchend: function(event) {
+            // measure duration
+            var duration = +new Date - this.startPos.time;
+            var deltaY = this.delta.y;
             if (!this.isScrolling) {
                 var container = this.container,
                 	element = this.element,
                     containerHeight = this.containerHeight,
                     slideHeight = this.slideHeight;
-                var deltaY = this.delta.y;
+               
 
                 if (!this.isPastBounds) {
                     (this.scrollPos += deltaY);
