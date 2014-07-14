@@ -118,6 +118,7 @@
                 isScrolling = !!(isScrolling || Math.abs(delta.y) < Math.abs(delta.x));
             }
             if (!isScrolling) {
+
                 //禁止页面滚动
                 event.preventDefault();
 
@@ -150,21 +151,58 @@
                     containerHeight = this.containerHeight,
                     slideHeight = this.slideHeight;
                
+                
 
-                if (!this.isPastBounds) {
-                    (this.scrollPos += deltaY);
-                } else {
-                    this.translate(0, 300);
 
-                    //确定滑动方向(true:top, false:bottom)
-                    var direction = deltaY < 0;
+                _move.call(this)
+                
+                function _move(){
+                    var self = this,
+                        _callee = arguments.callee;
+                    //快速滚动
+                    if(Number(duration) < 250 && Math.abs(deltaY) > 20 ){
+                        var final_y = this.scrollPos+(250/Number(duration))*deltaY;
+                        if(this.moveElement){
+                            clearTimeout(this.moveElement);
+                        }
+                        var yPos = this.scrollPos+deltaY;
 
-                    if (direction) {
-                        this.scrollTo(this.slideHeight - this.containerHeight);
-                        this.toBottomCallback && this.toBottomCallback.call(element,element);
+                        if(yPos==final_y) return true;
+
+                        if(yPos<final_y){
+                            var dist = Math.ceil((final_y - yPos)/10);
+                            yPos += dist;
+                        }
+                        if(yPos>final_y){
+                            var dist = Math.ceil((yPos - final_y)/10);
+                            yPos -= dist;
+                        }
+
+                        this.scrollPos  = yPos;
+
+                        this.moveElement = setTimeout(function(){
+                            _callee.call(self);
+                        }, 10)
+
+                    }else{
+                        this.scrollPos += deltaY;
+                    }
+
+                    isPastBounds  = this.scrollPos > 0 || Math.abs(this.scrollPos) > (this.slideHeight - this.containerHeight);
+                    if (!this.isPastBounds) {
+                        this.scrollTo(Math.abs(this.scrollPos));
                     } else {
-                        this.scrollTo(0);
-                        this.toTopCallback && this.toTopCallback.call(element,element);
+                        this.translate(0, 300);
+                        //确定滑动方向(true:top, false:bottom)
+                        var direction = deltaY < 0;
+
+                        if (direction) {
+                            this.scrollTo(this.slideHeight - this.containerHeight);
+                            this.toBottomCallback && this.toBottomCallback.call(element,element);
+                        } else {
+                            this.scrollTo(0);
+                            this.toTopCallback && this.toTopCallback.call(element,element);
+                        }
                     }
                 }
             }
