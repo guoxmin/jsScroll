@@ -93,6 +93,8 @@
 
             };
 
+            this.delta = {x:0,y:0};
+
             // used for testing first move event
             this.isScrolling = undefined;
 
@@ -159,7 +161,7 @@
                     
                 if (!this.isPastBounds) {
                     this.scrollPos += deltaY;
-
+                    
                     //快速滑动
                     if(Number(duration) < 250 && Math.abs(deltaY) > 20 ){
                         var final_y = Math.ceil(this.scrollPos+(300/Number(duration))*(deltaY+1));
@@ -182,8 +184,6 @@
                     }
                     return false;
                 }
-
-
 
                 function _move(final_y){
                     var self = this,
