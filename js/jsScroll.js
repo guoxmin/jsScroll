@@ -72,6 +72,7 @@
         		element = this.element;
         	this.containerHeight = container.clientHeight || container.offsetHeight;
             this.slideHeight = element.clientHeight || element.offsetHeight;
+            this.maxScrollTop =this.slideHeight -  this.containerHeight;
             container.style.overflow = "hidden";
         },
         touchstart: function(event) {
@@ -132,9 +133,9 @@
                 var slide = this.scrollPos + deltaY;
 
                 //判断滑动是否超过顶部或底部
-                var isPastBounds = this.isPastBounds = slide > 0 || Math.abs(slide) > (this.slideHeight - this.containerHeight);
+               this.isPastBounds = slide >= 0 || Math.abs(slide) >= this.maxScrollTop;
                 
-                if (!isPastBounds) {
+                if (!this.isPastBounds) {
                     container.scrollTop = Math.abs(slide);
                     this.slidePos = deltaY;
                 } else {
@@ -149,18 +150,26 @@
             var duration = +new Date - this.startPos.time;
             var deltaY = this.delta.y;
 
-            if (!this.isScrolling) {
+            if (!this.isScrolling || duration<100) {
                 var container = this.container,
                 	element = this.element,
                     containerHeight = this.containerHeight,
                     slideHeight = this.slideHeight;
 
-
+                    
                 if (!this.isPastBounds) {
-                    (this.scrollPos += deltaY);
-                } else {
+                    this.scrollPos += deltaY;
 
+                    //快速滑动
+                    if(Number(duration) < 250 && Math.abs(deltaY) > 20 ){
+                        var final_y = Math.ceil(this.scrollPos+(300/Number(duration))*(deltaY+1));
+                        final_y = final_y > 0 ? 0:final_y<-this.maxScrollTop ? -this.maxScrollTop:final_y;
+                        _move.call(this,final_y)
+                    }
+
+                } else {
                     this.translate(0, 300);
+
                     //确定滑动方向(true:top, false:bottom)
                     var direction = deltaY < 0;
 
@@ -174,59 +183,33 @@
                     return false;
                 }
 
-                if(Number(duration) < 200 && Math.abs(deltaY) > 20 ){
-                    var final_y = Math.ceil(this.scrollPos+(400/Number(duration))*deltaY);
-                    final_y = final_y > 0 ? 0:final_y;
-                    _move.call(this,final_y)
-                }
+
 
                 function _move(final_y){
                     var self = this,
                         _callee = arguments.callee;
                     //快速滚动
                         
-                        if(this.moveElement){
-                            clearTimeout(this.moveElement);
-                        }
-                        var yPos = this.scrollPos;
-                        if(yPos==final_y) return true;
-                        
-                        if(yPos<final_y){
-                            var dist = Math.ceil((final_y - yPos)/30);
-                             console.log(dist);
-                            yPos += dist;
-                        }
-                        if(yPos>final_y){
-
-                            var dist = Math.ceil((yPos - final_y)/30);
-                            yPos -= dist;
-                        }
-
-                        this.scrollPos  = yPos;
-
-                        this.moveElement = setTimeout(function(){
-                          _callee.call(self,final_y);
-                        }, 5)
-
-                 
-
-                    isPastBounds  = this.scrollPos > 0 || Math.abs(this.scrollPos) > (this.slideHeight - this.containerHeight);
-                    
-                    if (!this.isPastBounds) {
-                        this.scrollTo(Math.abs(this.scrollPos));
-                    } else {
-                        this.translate(0, 300);
-                        //确定滑动方向(true:top, false:bottom)
-                        var direction = deltaY < 0;
-
-                        if (direction) {
-                            this.scrollTo(this.slideHeight - this.containerHeight);
-                            this.toBottomCallback && this.toBottomCallback.call(element,element);
-                        } else {
-                            this.scrollTo(0);
-                            this.toTopCallback && this.toTopCallback.call(element,element);
-                        }
+                    if(this.moveElement){
+                        clearTimeout(this.moveElement);
                     }
+                    var yPos = this.scrollPos;
+                    if(yPos==final_y) return true;
+                    
+                    if(yPos<final_y){
+                        var dist = Math.ceil((final_y - yPos)/50);
+                        yPos += dist;
+                    }
+                    if(yPos>final_y){
+
+                        var dist = Math.ceil((yPos - final_y)/50);
+                        yPos -= dist;
+                    }
+
+                    this.scrollTo(Math.abs(yPos));
+                    this.moveElement = setTimeout(function(){
+                      _callee.call(self,final_y);
+                    }, 5)
                 }
             }
 
