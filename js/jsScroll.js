@@ -1,3 +1,31 @@
+/*
+*
+*模拟触屏滚动
+*
+*example:
+*html:
+<div id="Jscroll">
+    <div>content</div>
+</div>
+*js:
+jsMove(document.getElementById("Jscroll"), {
+    stopPropagation: true,
+    disableScroll:true,
+    toTopCallback: function(elem) {
+       
+    },
+    toBottomCallback: function(elem) {
+        
+    }
+})
+
+*config:
+* @param stopPropagation{Boolean}:是否阻止冒泡事件，默认为false
+* @param disableScroll{Boolean}:停止任何触及此容器滚动页面，默认值flase
+* @param toTopCallback{fn}:滑动到顶部时触发
+* @param toBottomCallback{fn}:滑动到底部时触发
+*/
+
 ;(function() {
     var JsMove = function() {
         //检查浏览器是否支持js变换事件
@@ -16,16 +44,14 @@
         return function(container, options) {
             if (!container) return;
             var element;
-            this.container = container;
-            this.element = element = container.children[0];
-            this.options = options || {};
-            this.toTopCallback = options.toTopCallback || noop;
-            this.toBottomCallback = options.toBottomCallback || noop;
+            this._container = container;
+            this._element = element = container.children[0];
+            this._options = options || {};
 
             //已滚动距离
-            this.scrollPos = 0;
+            this._scrollPos = 0;
 
-            this.setup();
+            this.init();
             if (browser.addEventListener) {
                 if (browser.touch) element.addEventListener('touchstart', this, false);
                 if (browser.transitions) {
@@ -46,13 +72,13 @@
         handleEvent: function(event) {
             switch (event.type) {
                 case 'touchstart':
-                    this.touchstart(event);
+                    this._touchstart(event);
                     break;
                 case 'touchmove':
-                    this.touchmove(event);
+                    this._touchmove(event);
                     break;
                 case 'touchend':
-                    this.touchend(event);
+                    this._touchend(event);
                     break;
                 case 'webkitTransitionEnd':
                 case 'msTransitionEnd':
@@ -61,27 +87,23 @@
                 case 'transitionend':
                     break;
                 case 'resize':
-                    this.setup.call(this);
+                    this.init.call(this);
                     break;
             }
-            if (this.options.stopPropagation) event.stopPropagation();
+            if (this._options.stopPropagation) event.stopPropagation();
 
         },
-        setup: function() {
-        	var container = this.container, 
-        		element = this.element;
-        	this.containerHeight = container.clientHeight || container.offsetHeight;
+        init: function() {
+            var container = this._container, 
+                element = this._element;
+            this._containerHeight = container.clientHeight || container.offsetHeight;
             this.slideHeight = element.clientHeight || element.offsetHeight;
-            this.maxScrollTop =this.slideHeight -  this.containerHeight;
             container.style.overflow = "hidden";
         },
-        touchstart: function(event) {
+        _touchstart: function(event) {
 
-            var element = this.element;
+            var element = this._element;
             var touches = event.touches[0];
-            if(this.moveElement){
-                clearTimeout(this.moveElement);
-            }
 
             this.startPos = {
                 // 获取初始touches坐标
@@ -93,8 +115,6 @@
 
             };
 
-            this.delta = {x:0,y:0};
-
             // used for testing first move event
             this.isScrolling = undefined;
 
@@ -105,11 +125,11 @@
             element.addEventListener('touchend', this, false);
 
         },
-        touchmove: function(event) {
+        _touchmove: function(event) {
             //确保是一个手指滑动
             if (event.touches.length > 1 || event.scale && event.scale !== 1) return
 
-            if (this.options.disableScroll) event.preventDefault();
+            if (this._options.disableScroll) event.preventDefault();
             var touches = event.touches[0];
 
             //计算X轴和Y轴的滑动距离
@@ -124,102 +144,64 @@
                 isScrolling = !!(isScrolling || Math.abs(delta.y) < Math.abs(delta.x));
             }
             if (!isScrolling) {
-
                 //禁止页面滚动
                 event.preventDefault();
 
-                var container = this.container,
-                    element = this.element,
+                var container = this._container,
+                    element = this._element,
                     deltaY = this.delta.y||0;
 
-                var slide = this.scrollPos + deltaY;
+                var slide = this._scrollPos + deltaY;
 
                 //判断滑动是否超过顶部或底部
-               this.isPastBounds = slide >= 0 || Math.abs(slide) >= this.maxScrollTop;
+                var isPastBounds = this.isPastBounds = slide > 0 || Math.abs(slide) > (this.slideHeight - this._containerHeight);
                 
-                if (!this.isPastBounds) {
+                if (!isPastBounds) {
                     container.scrollTop = Math.abs(slide);
                     this.slidePos = deltaY;
                 } else {
 
                     //超过顶部或底部增加阻力
-                    this.translate((deltaY-this.slidePos)/((Math.abs(delta.y) / 300 * 2 + 1)), 0)
+                    this._translate((deltaY-this.slidePos)/((Math.abs(delta.y) / 300 * 2 + 1)), 0)
                 }
             }
         },
-        touchend: function(event) {
+        _touchend: function(event) {
             // measure duration
             var duration = +new Date - this.startPos.time;
             var deltaY = this.delta.y;
-
-            if (!this.isScrolling || duration<100) {
-                var container = this.container,
-                	element = this.element,
-                    containerHeight = this.containerHeight,
+            if (!this.isScrolling) {
+                var container = this._container,
+                    element = this._element,
+                    containerHeight = this._containerHeight,
                     slideHeight = this.slideHeight;
+               
 
-                    
                 if (!this.isPastBounds) {
-                    this.scrollPos += deltaY;
-                    
-                    //快速滑动
-                    if(Number(duration) < 250 && Math.abs(deltaY) > 20 ){
-                        var final_y = Math.ceil(this.scrollPos+(300/Number(duration))*(deltaY+1));
-                        final_y = final_y > 0 ? 0:final_y<-this.maxScrollTop ? -this.maxScrollTop:final_y;
-                        _move.call(this,final_y)
-                    }
-
+                    (this._scrollPos += deltaY);
                 } else {
-                    this.translate(0, 300);
+                    this._translate(0, 300);
 
                     //确定滑动方向(true:top, false:bottom)
                     var direction = deltaY < 0;
 
                     if (direction) {
-                        this.scrollTo(this.slideHeight - this.containerHeight);
-                        this.toBottomCallback && this.toBottomCallback.call(element,element);
+                        this.scrollTo(this.slideHeight - this._containerHeight);
+                        this._options.toBottomCallback && this._options.toBottomCallback.call(element,element);
                     } else {
                         this.scrollTo(0);
-                        this.toTopCallback && this.toTopCallback.call(element,element);
+                        this._options.toTopCallback && this._options.toTopCallback.call(element,element);
                     }
-                    return false;
-                }
-
-                function _move(final_y){
-                    var self = this,
-                        _callee = arguments.callee;
-                    //快速滚动
-                        
-                    if(this.moveElement){
-                        clearTimeout(this.moveElement);
-                    }
-                    var yPos = this.scrollPos;
-                    if(yPos==final_y) return true;
-                    
-                    if(yPos<final_y){
-                        var dist = Math.ceil((final_y - yPos)/50);
-                        yPos += dist;
-                    }
-                    if(yPos>final_y){
-
-                        var dist = Math.ceil((yPos - final_y)/50);
-                        yPos -= dist;
-                    }
-
-                    this.scrollTo(Math.abs(yPos));
-                    this.moveElement = setTimeout(function(){
-                      _callee.call(self,final_y);
-                    }, 5)
                 }
             }
 
-            this.setup();
+            this.init();
             element.removeEventListener('touchmove', this, false)
             element.removeEventListener('touchend', this, false)
 
         },
-        translate: function(dist, speed) {
-            var style = this.element && this.element.style;
+        _translate: function(dist, speed) {
+            var style = this._element && this._element.style;
             if (!style) return;
             style.webkitTransitionDuration =
                 style.MozTransitionDuration =
@@ -234,11 +216,12 @@
 
         },
         scrollTo:function(dist){
-            this.container.scrollTop = dist;
-            this.scrollPos = -dist;
+            this._container.scrollTop = dist;
+            this._scrollPos = -dist;
         }
     }
     window.jsMove = function(container, options) {
         return new JsMove(container, options);
     }
 })(window);
+
